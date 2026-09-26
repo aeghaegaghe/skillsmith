@@ -7,6 +7,9 @@
   "bin": {
     "skillsmith-audit": "./bin/audit.js"
   },
+  "scripts": {
+    "test": "node --test"
+  },
   "files": [
     "bin",
     "docs",

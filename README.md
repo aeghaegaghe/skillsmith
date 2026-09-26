@@ -1,5 +1,7 @@
 # Skillsmith
 
+[![test](https://github.com/aeghaegaghe/skillsmith/actions/workflows/test.yml/badge.svg)](https://github.com/aeghaegaghe/skillsmith/actions/workflows/test.yml)
+
 Author and lint markdown-based "skill" files — the repeatable-process documents that let an LLM agent (Claude, or any other agent runtime) execute a workflow reliably, without re-deriving it from scratch every time.
 
 Two pieces:
@@ -22,6 +24,12 @@ Lint a folder of skills:
 node bin/audit.js <path-to-skill-folder> [--root <project-root>]
 ```
 
+Or run it straight from GitHub without installing anything:
+
+```bash
+npx github:aeghaegaghe/skillsmith <path-to-skill-folder>
+```
+
 Try it against the bundled example:
 
 ```bash
@@ -32,7 +40,7 @@ Expected output:
 
 ```
 # skillsmith-audit — examples/weekly-report
-scanned 3 skills/docs + 0 artifacts · N path refs (Example/Changelog excluded)
+scanned 3 skills/docs + 0 artifacts · 11 path refs (Example/Changelog excluded)
 
 ## MISSING PATHS (0)
   (none)
@@ -43,13 +51,51 @@ scanned 3 skills/docs + 0 artifacts · N path refs (Example/Changelog excluded)
 ## CANONICAL SCHEMA GAPS (0)
   (none)
 
+## UNCLASSIFIED — has frontmatter, no rigor_level (0)
+  (none)
+
 RESULT: PASS
 ```
 
-The audit checks three things:
+The audit checks four things:
 - **Missing paths** — every file a skill links to actually exists
 - **Orphans** — every skill file is referenced from the family's `README.md`
 - **Schema gaps** — every skill with a `rigor_level` in its frontmatter carries the required fields and sections for that rigor level
+- **Unclassified** — a warning, not a failure: any `.md` file (other than `README.md`) that has a frontmatter block but never set `rigor_level`, so it's never skipped silently
+
+### What a failure looks like
+
+Given a skill that links to a file that doesn't exist:
+
+```
+$ node bin/audit.js test/fixtures/missing-path
+# skillsmith-audit — test/fixtures/missing-path
+scanned 2 skills/docs + 0 artifacts · 3 path refs (Example/Changelog excluded)
+
+## MISSING PATHS (1)
+  ✗ [test/fixtures/missing-path/only-skill.md] -> ./does-not-exist.md
+
+## ORPHANS — not in README (0)
+  (none)
+
+## CANONICAL SCHEMA GAPS (0)
+  (none)
+
+## UNCLASSIFIED — has frontmatter, no rigor_level (0)
+  (none)
+
+RESULT: FAIL — 1 issue(s)
+```
+
+Exit code 1. See `test/fixtures/` for more worked examples (a substring-orphan case, a CRLF full-rigor file with missing fields, an unclassified file, and prose that shouldn't be mistaken for paths).
+
+## Tests
+
+```bash
+npm test
+```
+
+Runs `test/audit.test.js` (Node's built-in test runner) against the fixtures in `test/fixtures/`.
 
 ## Requirements
 

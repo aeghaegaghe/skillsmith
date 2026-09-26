@@ -68,6 +68,14 @@ test("a command shown in a fenced code block is not treated as a path", () => {
   assert.match(res.stdout, /RESULT: PASS/);
 });
 
+test("a subfolder with no SKILL.md warns as SKIPPED, not failed", () => {
+  const res = run("test/fixtures/skipped-subfolder");
+  assert.equal(res.status, 0);
+  assert.match(res.stdout, /## SKIPPED.*\(1\)/);
+  assert.match(res.stdout, /notes\/draft\.md/);
+  assert.match(res.stdout, /RESULT: PASS/);
+});
+
 test("bad invocation: missing family-dir exits 2 with usage", () => {
   const res = spawnSync(process.execPath, [AUDIT], { cwd: ROOT, encoding: "utf8" });
   assert.equal(res.status, 2);

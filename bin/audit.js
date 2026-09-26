@@ -21,6 +21,8 @@
 //      required frontmatter keys + section headers per docs/skill-schema.md.
 //   4. UNCLASSIFIED   — (warning, not a failure) any .md file other than README.md
 //      that has a frontmatter block but no rigor_level. It's never skipped silently.
+//   5. SKIPPED         — (warning, not a failure) .md files in a subfolder that has
+//      no SKILL.md — invisible to every other check, so surfaced instead of dropped.
 //
 // Exit 0 = clean, 1 = issues, 2 = bad invocation.
 
@@ -54,16 +56,28 @@ const rel = (p) => (p.startsWith(root + "/") ? p.slice(root.length + 1) : p);
 if (!existsSync(familyDir)) bail(`family dir not found: ${familyDir}`);
 
 // ---- collect: skills (.md + subdir SKILL.md), artifacts (.html) ----
+// A subfolder with no SKILL.md is invisible to every other check below — its .md
+// files are never linted, never checked for schema conformance, nothing. Track
+// them separately so they surface as a warning instead of just disappearing.
 function collect(dir) {
-  const md = [], html = [];
+  const md = [], html = [], skipped = [];
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     if (e.isFile() && e.name.endsWith(".md")) md.push(join(dir, e.name));
     else if (e.isFile() && e.name.endsWith(".html")) html.push(join(dir, e.name));
-    else if (e.isDirectory() && existsSync(join(dir, e.name, "SKILL.md"))) md.push(join(dir, e.name, "SKILL.md"));
+    else if (e.isDirectory()) {
+      const skillPath = join(dir, e.name, "SKILL.md");
+      if (existsSync(skillPath)) {
+        md.push(skillPath);
+      } else {
+        for (const se of readdirSync(join(dir, e.name), { withFileTypes: true })) {
+          if (se.isFile() && se.name.endsWith(".md")) skipped.push(join(dir, e.name, se.name));
+        }
+      }
+    }
   }
-  return { md, html };
+  return { md, html, skipped };
 }
-const { md, html } = collect(familyDir);
+const { md, html, skipped } = collect(familyDir);
 const readmePath = join(familyDir, "README.md");
 const readme = existsSync(readmePath) ? readText(readmePath) : "";
 
@@ -181,6 +195,8 @@ gaps.forEach((g) => console.log(`  ✗ ${g.file}${g.missKeys.length ? ` | frontm
 if (!gaps.length) console.log("  (none)");
 console.log(`\n## UNCLASSIFIED — has frontmatter, no rigor_level (${unclassified.length})`);
 unclassified.forEach((u) => console.log(`  ! ${u}`)); if (!unclassified.length) console.log("  (none)");
+console.log(`\n## SKIPPED — subfolder has no SKILL.md (${skipped.length})`);
+skipped.forEach((s) => console.log(`  ! ${rel(s)}`)); if (!skipped.length) console.log("  (none)");
 const problems = missing.length + orphans.length + gaps.length;
 console.log(`\nRESULT: ${problems === 0 ? "PASS" : "FAIL — " + problems + " issue(s)"}`);
 process.exit(problems === 0 ? 0 : 1);

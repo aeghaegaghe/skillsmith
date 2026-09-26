@@ -13,7 +13,9 @@
 //      templates) resolves to a real file. Relative refs (./ ../) resolve against
 //      the referencing file's directory; other refs resolve against --root.
 //      Placeholder paths (< > { } *) are skipped. The Example-run and Changelog
-//      sections are excluded (illustrative/historical prose, not live references).
+//      sections are excluded (illustrative/historical prose, not live references),
+//      and so is anything inside a fenced code block (``` or ~~~) — a shown
+//      command is documentation, not a reference.
 //   2. ORPHANS        — every skill file is referenced in the family README.
 //   3. SCHEMA GAPS    — every canonical skill (frontmatter has rigor_level) has the
 //      required frontmatter keys + section headers per docs/skill-schema.md.
@@ -99,13 +101,33 @@ function stripNarrative(text) {
 function stripUrls(text) {
   return text.replace(/https?:\/\/\S+/g, "");
 }
+// A command shown inside a fenced code block (``` or ~~~) is documentation, not a
+// file reference — e.g. `node bin/audit.js examples/weekly-report` in a README's
+// usage section. Drop fence contents entirely before the path scan. Inline
+// single-backtick code spans are untouched; that's how most real refs are written.
+// Fence length/char must match to close, per CommonMark (a longer inner run of the
+// same fence char inside a shorter-fenced block is literal content, not a close).
+function stripFencedCode(text) {
+  const out = [];
+  let fenceChar = null, fenceLen = 0;
+  for (const line of text.split("\n")) {
+    if (fenceChar) {
+      if (new RegExp(`^${fenceChar}{${fenceLen},}\\s*$`).test(line)) { fenceChar = null; fenceLen = 0; }
+      continue;
+    }
+    const open = line.match(/^(`{3,}|~{3,})/);
+    if (open) { fenceChar = open[1][0]; fenceLen = open[1].length; continue; }
+    out.push(line);
+  }
+  return out.join("\n");
+}
 const frontmatter = (text) => (text.match(/^---\n([\s\S]*?)\n---/) || [, ""])[1];
 
 // ---- 1. missing paths ----
 const missing = [];
 let checked = 0;
 for (const f of [...md, ...html]) {
-  const text = stripUrls(stripNarrative(readText(f)));
+  const text = stripUrls(stripFencedCode(stripNarrative(readText(f))));
   const dir = dirname(f);
   for (const c of new Set((text.match(PATH_RE) || []).map(clean))) {
     if (!c || /^\.\.?\/?$/.test(c) || isPlaceholder(c)) continue;

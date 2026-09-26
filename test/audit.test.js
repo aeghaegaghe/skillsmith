@@ -60,6 +60,14 @@ test("a file with frontmatter but no rigor_level warns without failing", () => {
   assert.match(res.stdout, /RESULT: PASS/);
 });
 
+test("a command shown in a fenced code block is not treated as a path", () => {
+  const res = run("test/fixtures/fenced-code");
+  assert.equal(res.status, 0);
+  assert.match(res.stdout, /## MISSING PATHS \(0\)/);
+  assert.doesNotMatch(res.stdout, /does-not-exist/);
+  assert.match(res.stdout, /RESULT: PASS/);
+});
+
 test("bad invocation: missing family-dir exits 2 with usage", () => {
   const res = spawnSync(process.execPath, [AUDIT], { cwd: ROOT, encoding: "utf8" });
   assert.equal(res.status, 2);

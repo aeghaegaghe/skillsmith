@@ -76,6 +76,14 @@ test("a subfolder with no SKILL.md warns as SKIPPED, not failed", () => {
   assert.match(res.stdout, /RESULT: PASS/);
 });
 
+test("a family with no README.md skips the orphan check instead of reporting a false clean", () => {
+  const res = run("test/fixtures/no-readme");
+  assert.equal(res.status, 0);
+  assert.match(res.stdout, /## ORPHANS — skipped \(no README\.md\)/);
+  assert.doesNotMatch(res.stdout, /## ORPHANS — not in README/);
+  assert.match(res.stdout, /RESULT: PASS/);
+});
+
 test("bad invocation: missing family-dir exits 2 with usage", () => {
   const res = spawnSync(process.execPath, [AUDIT], { cwd: ROOT, encoding: "utf8" });
   assert.equal(res.status, 2);

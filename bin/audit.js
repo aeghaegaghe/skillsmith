@@ -17,6 +17,8 @@
 //      and so is anything inside a fenced code block (``` or ~~~) — a shown
 //      command is documentation, not a reference.
 //   2. ORPHANS        — every skill file is referenced in the family README.
+//      If there's no README.md at all, this check is skipped (warning, not a
+//      failure) instead of silently reporting a clean 0.
 //   3. SCHEMA GAPS    — every canonical skill (frontmatter has rigor_level) has the
 //      required frontmatter keys + section headers per docs/skill-schema.md.
 //   4. UNCLASSIFIED   — (warning, not a failure) any .md file other than README.md
@@ -188,8 +190,12 @@ console.log(`# skillsmith-audit — ${familyArg}`);
 console.log(`scanned ${md.length} skills/docs + ${html.length} artifacts · ${checked} path refs (Example/Changelog excluded)\n`);
 console.log(`## MISSING PATHS (${missing.length})`);
 missing.forEach((m) => console.log(`  ✗ [${m.file}] -> ${m.ref}`)); if (!missing.length) console.log("  (none)");
-console.log(`\n## ORPHANS — not in README (${orphans.length})`);
-orphans.forEach((o) => console.log(`  ✗ ${o}`)); if (!orphans.length) console.log("  (none)");
+if (readme) {
+  console.log(`\n## ORPHANS — not in README (${orphans.length})`);
+  orphans.forEach((o) => console.log(`  ✗ ${o}`)); if (!orphans.length) console.log("  (none)");
+} else {
+  console.log(`\n## ORPHANS — skipped (no README.md)`);
+}
 console.log(`\n## CANONICAL SCHEMA GAPS (${gaps.length})`);
 gaps.forEach((g) => console.log(`  ✗ ${g.file}${g.missKeys.length ? ` | frontmatter: ${g.missKeys.join(", ")}` : ""}${g.missSec.length ? ` | sections: ${g.missSec.join(", ")}` : ""}`));
 if (!gaps.length) console.log("  (none)");

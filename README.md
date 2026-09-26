@@ -21,8 +21,14 @@ Author a new skill: load `docs/skill-schema.md` into your agent session and foll
 Lint a folder of skills:
 
 ```bash
-node bin/audit.js <path-to-skill-folder> [--root <project-root>]
+node bin/audit.js <path-to-skill-folder> [--root <project-root>] [--help] [--version]
 ```
+
+- `--root <project-root>` — the project root that non-relative refs resolve against. Defaults to the current directory.
+- `--help` / `-h` — print the usage line and exit 0.
+- `--version` / `-v` — print the installed version and exit 0.
+
+Any other flag, or more than one positional argument, is an error: it exits 2 with a message plus the usage line, rather than being silently ignored.
 
 Or run it straight from GitHub without installing anything:
 
@@ -40,7 +46,7 @@ Expected output:
 
 ```
 # skillsmith-audit — examples/weekly-report
-scanned 3 skills/docs + 0 artifacts · 11 path refs (Example/Changelog excluded)
+scanned 3 skills/docs + 0 artifacts · 10 path refs (Example/Changelog excluded)
 
 ## MISSING PATHS (0)
   (none)
@@ -54,14 +60,18 @@ scanned 3 skills/docs + 0 artifacts · 11 path refs (Example/Changelog excluded)
 ## UNCLASSIFIED — has frontmatter, no rigor_level (0)
   (none)
 
+## SKIPPED — subfolder has no SKILL.md (0)
+  (none)
+
 RESULT: PASS
 ```
 
-The audit checks four things:
-- **Missing paths** — every file a skill links to actually exists
-- **Orphans** — every skill file is referenced from the family's `README.md`
-- **Schema gaps** — every skill with a `rigor_level` in its frontmatter carries the required fields and sections for that rigor level
-- **Unclassified** — a warning, not a failure: any `.md` file (other than `README.md`) that has a frontmatter block but never set `rigor_level`, so it's never skipped silently
+The audit checks five things:
+- **Missing paths** — every file a skill links to actually exists. A path is only recognized if it starts with `./`, `../`, or `~/`, or ends with a recognized file extension; URLs and anything inside a fenced code block (a shown command, not a reference) are excluded.
+- **Orphans** — every skill file is referenced from the family's `README.md`. If there's no `README.md` at all, this prints `## ORPHANS — skipped (no README.md)` instead of a false "0, clean" — the check never ran, so it doesn't claim to have passed.
+- **Schema gaps** — every skill with a `rigor_level` in its frontmatter carries the required fields and sections for that rigor level.
+- **Unclassified** (warning, not a failure) — any `.md` file (other than `README.md`) that has a frontmatter block but never set `rigor_level`, so it's never skipped silently.
+- **Skipped** (warning, not a failure) — `.md` files sitting in a subfolder that has no `SKILL.md`. That subfolder is otherwise invisible to every check above, so this is what surfaces it instead of the files just disappearing.
 
 ### What a failure looks like
 
@@ -84,10 +94,13 @@ scanned 2 skills/docs + 0 artifacts · 3 path refs (Example/Changelog excluded)
 ## UNCLASSIFIED — has frontmatter, no rigor_level (0)
   (none)
 
+## SKIPPED — subfolder has no SKILL.md (0)
+  (none)
+
 RESULT: FAIL — 1 issue(s)
 ```
 
-Exit code 1. See `test/fixtures/` for more worked examples (a substring-orphan case, a CRLF full-rigor file with missing fields, an unclassified file, and prose that shouldn't be mistaken for paths).
+Exit code 1. See `test/fixtures/` for more worked examples: a substring-orphan case, a CRLF full-rigor file with missing fields, an unclassified file, prose (and a fenced-code command) that shouldn't be mistaken for paths, a subfolder with no `SKILL.md`, and a family with no `README.md` at all.
 
 ## Tests
 

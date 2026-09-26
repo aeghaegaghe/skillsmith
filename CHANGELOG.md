@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1
+
+- **Excluded fenced code blocks from the path scan.** A command shown inside a ``` or ~~~ block (e.g. `node bin/audit.js examples/weekly-report` in a README's usage section) was scanned as a real file reference. This is what made `npx github:aeghaegaghe/skillsmith examples/weekly-report`, run from outside the repo, report a false missing path. Inline single-backtick spans are untouched.
+- **New `SKIPPED` section.** A subfolder with no `SKILL.md` was invisible to every check — its `.md` files were never collected at all. They're now surfaced as a warning (not a failure) instead of silently disappearing.
+- **Fixed a false-clean orphan check.** A family with no `README.md` used to print `## ORPHANS — not in README (0) (none)`, reading as "checked, all clean" when the check never ran. It now prints `## ORPHANS — skipped (no README.md)`.
+- **Added `--help`/`-h` and `--version`/`-v`.** Both exit 0. Any other flag, or more than one positional argument, exits 2 with a specific error plus the usage line instead of being silently ignored or misparsed.
+- **CI hardening.** Added top-level `permissions: contents: read` to `.github/workflows/test.yml`.
+- **README updates.** Documented the new `SKIPPED` and no-`README.md` cases and the new flags; refreshed the expected-output examples.
+
 ## 0.2.0
 
 - **Schema/linter alignment.** The full-process output template and its illustrative example were missing `purpose`/`rigor_level`/`triggers`, so any skill produced by the authoring interview was silently skipped by the linter. Both now carry the required fields, and `rigor_level` is documented as required in the lightweight frontmatter list too.

@@ -30,10 +30,12 @@ Trigger when the operator wants to define or document a repeatable process that 
 Not every skill needs the full process. Two levels exist:
 
 **Lightweight skill** — a reactive pattern the agent follows when a trigger phrase appears. Use lightweight rigor when the skill has no external output, no scheduled execution, no cross-team impact, and no judgment steps that need rubrics. Lightweight skills require only:
-- Frontmatter (`name`, `version`, `purpose`, `triggers`)
+- Frontmatter (`name`, `version`, `purpose`, `rigor_level: lightweight`, `triggers`)
 - Sections: When to use, Inputs, Steps, Output format, Common failure modes, Related
 
-**Full process** — a scheduled or automation-grade workflow with external output, external data pulls, or cross-team impact. Use full rigor for anything with a cron schedule, tool calls that write external state, or human-approval gates. Full processes require the complete 7-phase interview and the full output schema below.
+**Full process** — a scheduled or automation-grade workflow with external output, external data pulls, or cross-team impact. Use full rigor for anything with a cron schedule, tool calls that write external state, or human-approval gates. Full processes require the complete 7-phase interview and the full output schema below, including `rigor_level: full` in frontmatter.
+
+`rigor_level` is what `skillsmith-audit` uses to recognize a file as a canonical skill and check it against the schema. A skill file without it is linted as UNCLASSIFIED — flagged as a warning, not skipped silently.
 
 **When in doubt, use the full process.** Skills always graduate from lightweight to full when they start producing external output or running on a schedule — that transition point is when you come back and fill in the missing fields.
 
@@ -146,6 +148,10 @@ Produce a file named `skills/[slug].md` with this exact structure:
 ---
 name: [kebab-case-name]
 version: 0.1
+purpose: [one-sentence purpose — the same sentence used to decide whether this skill fires]
+rigor_level: full
+triggers:
+  - [phrase that invokes this skill]
 owner: [real name]
 status: draft | active | deprecated
 trigger_type: scheduled | event | manual
@@ -248,6 +254,10 @@ Illustrative only. Shows the shape of a well-formed full-process output file.
 ---
 name: weekly-account-health-pulse
 version: 0.1
+purpose: Produce a weekly account health digest so a deteriorating relationship is caught within 7 days of a red signal.
+rigor_level: full
+triggers:
+  - "weekly account health pulse"
 owner: agent (draft) → operator (review)
 status: draft
 trigger_type: scheduled

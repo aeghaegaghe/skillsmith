@@ -17,6 +17,8 @@
 //   2. ORPHANS        — every skill file is referenced in the family README.
 //   3. SCHEMA GAPS    — every canonical skill (frontmatter has rigor_level) has the
 //      required frontmatter keys + section headers per docs/skill-schema.md.
+//   4. UNCLASSIFIED   — (warning, not a failure) any .md file other than README.md
+//      that has a frontmatter block but no rigor_level. It's never skipped silently.
 //
 // Exit 0 = clean, 1 = issues, 2 = bad invocation.
 
@@ -92,11 +94,13 @@ const FM_FULL = ["owner", "status", "trigger_type", "runtime", "inputs", "output
 const SEC = [["## Steps", "## Stages"]];
 const SEC_FULL = [["## Contract"], ["## Failure modes"], ["## Done criterion", "## Done criteria"], ["## Changelog"]];
 const gaps = [];
+const unclassified = [];
 for (const f of md) {
   if (f === readmePath) continue;
   const raw = readFileSync(f, "utf8");
   const fm = frontmatter(raw);
-  if (!/rigor_level:/.test(fm)) continue;                       // not a canonical skill (template/doc)
+  if (!fm) continue;                                            // no frontmatter at all — not a skill file
+  if (!/rigor_level:/.test(fm)) { unclassified.push(rel(f)); continue; } // has frontmatter but never classified
   const full = /rigor_level:\s*full/.test(fm);
   const missKeys = [...FM, ...(full ? FM_FULL : [])].filter((k) => !new RegExp(`(^|\\n)\\s*${k}:`).test(fm));
   const missSec = [...SEC, ...(full ? SEC_FULL : [])].filter((alts) => !alts.some((h) => raw.includes(h))).map((a) => a[0]);
@@ -113,6 +117,8 @@ orphans.forEach((o) => console.log(`  ✗ ${o}`)); if (!orphans.length) console.
 console.log(`\n## CANONICAL SCHEMA GAPS (${gaps.length})`);
 gaps.forEach((g) => console.log(`  ✗ ${g.file}${g.missKeys.length ? ` | frontmatter: ${g.missKeys.join(", ")}` : ""}${g.missSec.length ? ` | sections: ${g.missSec.join(", ")}` : ""}`));
 if (!gaps.length) console.log("  (none)");
+console.log(`\n## UNCLASSIFIED — has frontmatter, no rigor_level (${unclassified.length})`);
+unclassified.forEach((u) => console.log(`  ! ${u}`)); if (!unclassified.length) console.log("  (none)");
 const problems = missing.length + orphans.length + gaps.length;
 console.log(`\nRESULT: ${problems === 0 ? "PASS" : "FAIL — " + problems + " issue(s)"}`);
 process.exit(problems === 0 ? 0 : 1);

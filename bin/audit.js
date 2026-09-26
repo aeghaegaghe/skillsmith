@@ -101,11 +101,17 @@ for (const f of [...md, ...html]) {
 }
 
 // ---- 2. orphans ----
+// A substring test (`readme.includes(base)`) falsely marks e.g. `report.md` as
+// indexed just because the README mentions `send-report.md`. Require the name to
+// appear as a whole token — bounded by a non-filename character (or string edge)
+// on both sides — so it must be an exact filename/link-target match.
 const orphans = [];
 if (readme) for (const f of md) {
   if (f === readmePath) continue;
   const base = f.slice(familyDir.length + 1).split("/")[0];
-  if (!readme.includes(base)) orphans.push(rel(f));
+  const escaped = base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const boundary = new RegExp(`(^|[^A-Za-z0-9_.-])${escaped}($|[^A-Za-z0-9_.-])`);
+  if (!boundary.test(readme)) orphans.push(rel(f));
 }
 
 // ---- 3. canonical schema conformance (skills only) ----

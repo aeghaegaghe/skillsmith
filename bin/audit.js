@@ -29,17 +29,27 @@ import { join, dirname, resolve } from "node:path";
 // skips them from the schema check entirely — normalize on every read.
 const readText = (f) => readFileSync(f, "utf8").replace(/\r\n/g, "\n");
 
-const args = process.argv.slice(2);
-const rootFlagIdx = args.indexOf("--root");
-const root = rootFlagIdx !== -1 ? resolve(args[rootFlagIdx + 1]) : process.cwd();
-const familyArg = args.filter((a, i) => a !== "--root" && args[i - 1] !== "--root")[0];
-if (!familyArg) {
-  console.error("usage: skillsmith-audit <family-dir> [--root <project-root>]");
+const usage = "usage: skillsmith-audit <family-dir> [--root <project-root>]";
+function bail(msg) {
+  console.error(msg);
+  console.error(usage);
   process.exit(2);
 }
+
+const args = process.argv.slice(2);
+const rootFlagIdx = args.indexOf("--root");
+let root = process.cwd();
+if (rootFlagIdx !== -1) {
+  const rootArg = args[rootFlagIdx + 1];
+  if (!rootArg || rootArg.startsWith("--")) bail("--root requires a value");
+  root = resolve(rootArg);
+  if (!existsSync(root)) bail(`root not found: ${root}`);
+}
+const familyArg = args.filter((a, i) => a !== "--root" && args[i - 1] !== "--root")[0];
+if (!familyArg) bail("missing <family-dir>");
 const familyDir = resolve(root, familyArg);
 const rel = (p) => (p.startsWith(root + "/") ? p.slice(root.length + 1) : p);
-if (!existsSync(familyDir)) { console.error(`family dir not found: ${familyDir}`); process.exit(2); }
+if (!existsSync(familyDir)) bail(`family dir not found: ${familyDir}`);
 
 // ---- collect: skills (.md + subdir SKILL.md), artifacts (.html) ----
 function collect(dir) {

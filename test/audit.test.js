@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -82,6 +83,46 @@ test("a family with no README.md skips the orphan check instead of reporting a f
   assert.match(res.stdout, /## ORPHANS — skipped \(no README\.md\)/);
   assert.doesNotMatch(res.stdout, /## ORPHANS — not in README/);
   assert.match(res.stdout, /RESULT: PASS/);
+});
+
+test("--help prints usage and exits 0", () => {
+  const res = spawnSync(process.execPath, [AUDIT, "--help"], { cwd: ROOT, encoding: "utf8" });
+  assert.equal(res.status, 0);
+  assert.match(res.stdout, /usage: skillsmith-audit/);
+});
+
+test("-h prints usage and exits 0", () => {
+  const res = spawnSync(process.execPath, [AUDIT, "-h"], { cwd: ROOT, encoding: "utf8" });
+  assert.equal(res.status, 0);
+  assert.match(res.stdout, /usage: skillsmith-audit/);
+});
+
+test("--version prints the package.json version and exits 0", () => {
+  const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
+  const res = spawnSync(process.execPath, [AUDIT, "--version"], { cwd: ROOT, encoding: "utf8" });
+  assert.equal(res.status, 0);
+  assert.equal(res.stdout.trim(), pkg.version);
+});
+
+test("-v prints the package.json version and exits 0", () => {
+  const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
+  const res = spawnSync(process.execPath, [AUDIT, "-v"], { cwd: ROOT, encoding: "utf8" });
+  assert.equal(res.status, 0);
+  assert.equal(res.stdout.trim(), pkg.version);
+});
+
+test("an unknown flag exits 2 with an error and usage", () => {
+  const res = spawnSync(process.execPath, [AUDIT, "test/fixtures/clean", "--bogus"], { cwd: ROOT, encoding: "utf8" });
+  assert.equal(res.status, 2);
+  assert.match(res.stderr, /unknown flag: --bogus/);
+  assert.match(res.stderr, /usage: skillsmith-audit/);
+});
+
+test("an extra positional argument exits 2 with an error and usage", () => {
+  const res = spawnSync(process.execPath, [AUDIT, "test/fixtures/clean", "extra-thing"], { cwd: ROOT, encoding: "utf8" });
+  assert.equal(res.status, 2);
+  assert.match(res.stderr, /unexpected extra argument: extra-thing/);
+  assert.match(res.stderr, /usage: skillsmith-audit/);
 });
 
 test("bad invocation: missing family-dir exits 2 with usage", () => {

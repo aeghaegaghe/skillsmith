@@ -3,10 +3,12 @@
 // its skills, artifacts (.html), templates, docs, and their cross-references.
 //
 // Usage: skillsmith-audit <family-dir> [--root <project-root>]
-//   family-dir    path to the skill family (dir with skill .md files + subdir
-//                 SKILL.md files + a README.md), relative to cwd or --root
-//   --root        project root that absolute-looking refs (e.g. skills/foo.md)
-//                 resolve against. Defaults to cwd.
+//   family-dir      path to the skill family (dir with skill .md files + subdir
+//                   SKILL.md files + a README.md), relative to cwd or --root
+//   --root          project root that absolute-looking refs (e.g. skills/foo.md)
+//                   resolve against. Defaults to cwd.
+//   --help, -h      print this usage line and exit 0
+//   --version, -v   print the installed version and exit 0
 //
 // Checks:
 //   1. MISSING PATHS  — every literal path referenced anywhere (skills, artifacts,
@@ -30,12 +32,13 @@
 
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // CRLF files otherwise break frontmatter parsing (it expects \n), which silently
 // skips them from the schema check entirely — normalize on every read.
 const readText = (f) => readFileSync(f, "utf8").replace(/\r\n/g, "\n");
 
-const usage = "usage: skillsmith-audit <family-dir> [--root <project-root>]";
+const usage = "usage: skillsmith-audit <family-dir> [--root <project-root>] [--help] [--version]";
 function bail(msg) {
   console.error(msg);
   console.error(usage);
@@ -43,15 +46,35 @@ function bail(msg) {
 }
 
 const args = process.argv.slice(2);
-const rootFlagIdx = args.indexOf("--root");
-let root = process.cwd();
-if (rootFlagIdx !== -1) {
-  const rootArg = args[rootFlagIdx + 1];
-  if (!rootArg || rootArg.startsWith("--")) bail("--root requires a value");
-  root = resolve(rootArg);
-  if (!existsSync(root)) bail(`root not found: ${root}`);
+
+if (args.includes("--help") || args.includes("-h")) {
+  console.log(usage);
+  process.exit(0);
 }
-const familyArg = args.filter((a, i) => a !== "--root" && args[i - 1] !== "--root")[0];
+if (args.includes("--version") || args.includes("-v")) {
+  const pkgPath = join(dirname(fileURLToPath(import.meta.url)), "..", "package.json");
+  console.log(JSON.parse(readFileSync(pkgPath, "utf8")).version);
+  process.exit(0);
+}
+
+let root = process.cwd();
+let familyArg = null;
+for (let i = 0; i < args.length; i++) {
+  const a = args[i];
+  if (a === "--root") {
+    const val = args[i + 1];
+    if (!val || val.startsWith("-")) bail("--root requires a value");
+    root = resolve(val);
+    if (!existsSync(root)) bail(`root not found: ${root}`);
+    i++; // consume the value
+  } else if (a.startsWith("-")) {
+    bail(`unknown flag: ${a}`);
+  } else if (familyArg === null) {
+    familyArg = a;
+  } else {
+    bail(`unexpected extra argument: ${a}`);
+  }
+}
 if (!familyArg) bail("missing <family-dir>");
 const familyDir = resolve(root, familyArg);
 const rel = (p) => (p.startsWith(root + "/") ? p.slice(root.length + 1) : p);

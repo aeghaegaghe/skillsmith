@@ -25,6 +25,10 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 
+// CRLF files otherwise break frontmatter parsing (it expects \n), which silently
+// skips them from the schema check entirely — normalize on every read.
+const readText = (f) => readFileSync(f, "utf8").replace(/\r\n/g, "\n");
+
 const args = process.argv.slice(2);
 const rootFlagIdx = args.indexOf("--root");
 const root = rootFlagIdx !== -1 ? resolve(args[rootFlagIdx + 1]) : process.cwd();
@@ -49,7 +53,7 @@ function collect(dir) {
 }
 const { md, html } = collect(familyDir);
 const readmePath = join(familyDir, "README.md");
-const readme = existsSync(readmePath) ? readFileSync(readmePath, "utf8") : "";
+const readme = existsSync(readmePath) ? readText(readmePath) : "";
 
 // ---- helpers ----
 // A "path" is only ever one of two shapes:
@@ -91,7 +95,7 @@ const frontmatter = (text) => (text.match(/^---\n([\s\S]*?)\n---/) || [, ""])[1]
 const missing = [];
 let checked = 0;
 for (const f of [...md, ...html]) {
-  const text = stripUrls(stripNarrative(readFileSync(f, "utf8")));
+  const text = stripUrls(stripNarrative(readText(f)));
   const dir = dirname(f);
   for (const c of new Set((text.match(PATH_RE) || []).map(clean))) {
     if (!c || /^\.\.?\/?$/.test(c) || isPlaceholder(c)) continue;
@@ -123,7 +127,7 @@ const gaps = [];
 const unclassified = [];
 for (const f of md) {
   if (f === readmePath) continue;
-  const raw = readFileSync(f, "utf8");
+  const raw = readText(f);
   const fm = frontmatter(raw);
   if (!fm) continue;                                            // no frontmatter at all — not a skill file
   if (!/rigor_level:/.test(fm)) { unclassified.push(rel(f)); continue; } // has frontmatter but never classified

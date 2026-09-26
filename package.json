@@ -1,0 +1,15 @@
+{
+  "name": "skillsmith",
+  "version": "0.1.0",
+  "description": "Author and lint markdown-based skill files for LLM agents",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "skillsmith-audit": "./bin/audit.js"
+  },
+  "files": [
+    "bin",
+    "docs",
+    "examples"
+  ]
+}

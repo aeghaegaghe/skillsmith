@@ -52,18 +52,38 @@ const readmePath = join(familyDir, "README.md");
 const readme = existsSync(readmePath) ? readFileSync(readmePath, "utf8") : "";
 
 // ---- helpers ----
-// matches: ./x, ../x, ~/x, or a bare path with at least one slash (e.g. skills/foo.md)
-const PATH_RE = /(?:~\/|\.\.?\/)[A-Za-z0-9_.\/<>{}*@-]+|\b[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_.\/<>{}*@-]+)+/g;
+// A "path" is only ever one of two shapes:
+//   (a) starts with ./ ../ or ~/  — an explicit relative/home ref, any trailing chars
+//   (b) ends with a recognized file extension — a bare or nested reference like
+//       skills/foo.md or foo.md. Anything else (input/output, and/or, a URL segment)
+//       is prose, not a path, and is never checked.
+const PATH_EXTS = "md|html|htm|json|js|mjs|cjs|ts|yml|yaml|py|sh|txt|csv";
+const PATH_RE = new RegExp(
+  String.raw`(?:~\/|\.\.?\/)[A-Za-z0-9_.\/<>{}*@-]+` +
+  "|" +
+  String.raw`(?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+\.(?:${PATH_EXTS})\b`,
+  "g"
+);
 const isPlaceholder = (p) => /[<>{}*]/.test(p);
 const clean = (p) => p.replace(/[).,;:`'"!?]+$/, "").replace(/@v?[0-9][^\/]*$/, "");
 function toAbs(p, fileDir) {
   if (p.startsWith("~/")) return join(process.env.HOME || "", p.slice(2));
   if (p.startsWith("./") || p.startsWith("../")) return resolve(fileDir, p);
+  // bare ref (no ./ ../ ~/ prefix): a plain filename like `fetch-data.md` in prose
+  // almost always names a sibling of the file it's mentioned in; a multi-segment
+  // ref like `skills/foo.md` is usually written root-relative. Try both.
+  const relToFile = resolve(fileDir, p);
+  if (existsSync(relToFile)) return relToFile;
   return resolve(root, p);
 }
 // drop Example-run + Changelog sections before the path scan (narrative/historical)
 function stripNarrative(text) {
   return text.split(/\n(?=#{2,3}\s)/).filter((s) => !/^#{2,3}\s+(Example run|Changelog)\b/i.test(s)).join("\n");
+}
+// URLs contain slash-separated segments (and often file extensions) that read like
+// paths but never are — drop them before the path scan runs.
+function stripUrls(text) {
+  return text.replace(/https?:\/\/\S+/g, "");
 }
 const frontmatter = (text) => (text.match(/^---\n([\s\S]*?)\n---/) || [, ""])[1];
 
@@ -71,7 +91,7 @@ const frontmatter = (text) => (text.match(/^---\n([\s\S]*?)\n---/) || [, ""])[1]
 const missing = [];
 let checked = 0;
 for (const f of [...md, ...html]) {
-  const text = stripNarrative(readFileSync(f, "utf8"));
+  const text = stripUrls(stripNarrative(readFileSync(f, "utf8")));
   const dir = dirname(f);
   for (const c of new Set((text.match(PATH_RE) || []).map(clean))) {
     if (!c || /^\.\.?\/?$/.test(c) || isPlaceholder(c)) continue;

@@ -2,17 +2,17 @@
 
 [![test](https://github.com/aeghaegaghe/skillsmith/actions/workflows/test.yml/badge.svg)](https://github.com/aeghaegaghe/skillsmith/actions/workflows/test.yml)
 
-Author and lint markdown-based "skill" files — the repeatable-process documents that let an LLM agent (Claude, or any other agent runtime) execute a workflow reliably, without re-deriving it from scratch every time.
+Once you have more than a few AI agent skill files, they start to rot: a file gets renamed and three references break, a new skill never makes it into the index, required fields quietly go missing. Skillsmith treats your skills folder like a codebase, with a schema for writing them and a linter that catches drift before your agent does.
+
+```bash
+npx github:aeghaegaghe/skillsmith ./skills
+```
 
 Two pieces:
 
 1. **A canonical schema + authoring process** ([`docs/skill-schema.md`](./docs/skill-schema.md)) — a structured interview that turns a fuzzy workflow into an unambiguous skill file. Every step in a process gets classified as **deterministic** (code/API), **judgment** (LLM against an explicit rubric), or **human** (named owner, no fake accountability). A process with an unclassified step, or a judgment step with no rubric, is the #1 cause of automations that quietly break.
 
 2. **A consistency linter** ([`bin/audit.js`](./bin/audit.js)) — once you have more than a couple of skills that reference each other, they drift: a file gets renamed and a cross-reference goes dead, a new skill never gets added to the index, a skill's frontmatter falls out of schema. `skillsmith-audit` walks a folder of skill files and catches all three, deterministically.
-
-## Why
-
-Once you're running more than a handful of AI-agent workflows, you have the same problem software has always had: files that reference each other, and no guarantee those references stay true as the set grows. Skillsmith treats a folder of skill files like a small codebase — schema-validated and lint-checked — instead of a pile of prompts.
 
 ## Usage
 
